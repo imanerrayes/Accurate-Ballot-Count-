@@ -1,4 +1,3 @@
-# Accurate-Ballot-Count-
 # Ballot Submission Dashboard
 
 This project sets up a simple dashboard for submitting and tracking ballots. The dashboard is built using Python and Flask, ensuring that only registered voters can submit ballots and that no duplicate ballots are counted.
