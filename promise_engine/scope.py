@@ -88,6 +88,12 @@ class Race:
     competitiveness_source: Optional[str] = None
     entity_ids: Tuple[str, ...] = ()
     topics: Tuple[str, ...] = ()
+    notes: Optional[str] = None
+    """Free-text provenance caveats — e.g. a field populated from general
+    reference knowledge rather than a source confirmed in the same import
+    pass, or a seat whose incumbent has since announced retirement. Kept
+    separate from ``competitiveness_source`` so a rating's citation is
+    never diluted by an unrelated caveat about a different field."""
 
     @property
     def is_competitive(self) -> bool:

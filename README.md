@@ -72,11 +72,9 @@ layer over the same `promise_engine` core.
 `competitiveness_rating` and `competitiveness_source` fields exist so a
 caller can cite a named rating service (Cook Political Report, Sabato's
 Crystal Ball, Inside Elections) verbatim, and `entity_ids` links to
-candidates populated from FEC candidate filings. This repository ships no
-2026 race roster, because asserting one without a live, cited import would
-violate the same evidence-precedes-inference rule the engine enforces
-everywhere else. Populating the real universe is a data-import task, not a
-scope-layer one — see "Next step" below.
+candidates populated from FEC candidate filings. `promise_engine.data.races_2026`
+is a first real import against this model — see "The 2026 data import"
+below for exactly what it covers and what it doesn't.
 
 ## Recommended default scope and build plan
 
@@ -109,12 +107,46 @@ Build sequence, matching the specification's own phased delivery plan
    the prospective-probability layer (H4) stays disabled regardless, since
    its validation gates (Section 12.3) are a separate research program.
 
-**Next step, if you want it:** importing the real 2026 Senate and House
-race universe (which seats are up, official candidates per FEC filings,
-and cited competitiveness ratings) via web lookup, so `scope.py` has real
-`Race` records to resolve queries against instead of test fixtures. This
-is a distinct, larger task from the architecture work above and is not
-done automatically here.
+## The 2026 data import
+
+`promise_engine/data/races_2026.py` is a real, cited, but partial import,
+retrieved 2026-09-15. Read its module docstring for the full provenance
+trail; in summary:
+
+- **Complete and high confidence:** all 35 Senate races up in 2026 (33
+  Class II regular elections plus special elections in Florida and Ohio),
+  corroborated across multiple independent search results.
+- **Partial:** only 8 of those 35 Senate races carry a cited
+  competitiveness rating (Cook Political Report and, for the Florida
+  special, Sabato's Crystal Ball). The rest are left `None` rather than
+  guessed — several, like Alaska, were repeatedly described as
+  competitive without a specific rating tier attached in any retrieved
+  snippet, and `resolve_scope` correctly excludes them from
+  `competitive_only` queries as a result.
+- **One rating tier only:** the 18 House races are exactly Cook's
+  June 18, 2026 Toss Up tier, not the full competitive House set (Cook
+  also publishes Lean and Likely tiers not captured here).
+- **Mixed confidence on House district numbers:** 5 of the 18 were
+  confirmed by a targeted search this session; the other 13 come from the
+  assistant's pre-existing reference knowledge and are flagged in each
+  record's `notes` field rather than presented as equally solid.
+- **Not done:** candidate-level entity resolution (FEC filer IDs,
+  challengers) — every `entity_ids` tuple is empty.
+- **A tooling limitation shaped this import:** WebFetch (direct page
+  retrieval) was blocked by this environment's network egress policy for
+  every domain tried, including Wikipedia, Ballotpedia, Cook Political
+  Report, and 270toWin. Everything above came from WebSearch's
+  synthesized snippets of those sources, which is inherently lossier than
+  a direct fetch of a full ratings table. A session with working page
+  fetch (or a licensed data feed) could complete this import in one pass
+  instead of leaving most Senate races and all but one House rating tier
+  unrated.
+
+Treat this module as a timestamped snapshot, not a maintained feed:
+re-import before publishing anything built on it, since ratings and
+candidacies (already, two of the 18 House incumbents captured here have
+announced they are not running again) change continuously between now and
+the November 2026 election.
 
 ## Core design rules encoded in the code
 
