@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://electora.example/schemas/jurisdiction_profile.schema.json",
+  "title": "JurisdictionProfile",
+  "description": "Machine-readable schema for the jurisdiction profile object required by Section 7.3 of the Political Promise Comparison and Feasibility Engine specification. Mirrors promise_engine.models.JurisdictionProfile.",
+  "type": "object",
+  "required": [
+    "profile_id",
+    "version",
+    "jurisdiction",
+    "election_types",
+    "effective_from",
+    "approver",
+    "government_system"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "profile_id": { "type": "string", "minLength": 1 },
+    "version": { "type": "string", "minLength": 1 },
+    "jurisdiction": { "type": "string", "minLength": 1 },
+    "election_types": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/electionType" }
+    },
+    "effective_from": { "type": "string", "format": "date" },
+    "effective_to": { "type": ["string", "null"], "format": "date" },
+    "approver": { "type": "string", "minLength": 1 },
+    "government_system": {
+      "type": "string",
+      "enum": [
+        "presidential",
+        "parliamentary",
+        "semi_presidential",
+        "direct_executive",
+        "collegial",
+        "supranational",
+        "configured_hybrid"
+      ]
+    },
+    "legal_rules": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/legalRule" }
+    },
+    "fiscal_baseline": {
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/fiscalBaseline" }]
+    },
+    "mandatory_gate_catalog": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    }
+  },
+  "$defs": {
+    "electionType": {
+      "type": "string",
+      "enum": [
+        "parliamentary_general",
+        "presidential",
+        "legislative_seat",
+        "regional_or_provincial",
+        "municipal",
+        "supranational",
+        "directly_elected_executive",
+        "referendum"
+      ]
+    },
+    "authorityCode": {
+      "type": "string",
+      "enum": [
+        "direct_authority",
+        "shared_or_concurrent",
+        "delegated",
+        "executive_discretion",
+        "legislative_initiative_only",
+        "advocacy_or_negotiation_only",
+        "authority_held_elsewhere",
+        "legally_prohibited",
+        "indeterminate"
+      ]
+    },
+    "legalRule": {
+      "type": "object",
+      "required": [
+        "rule_id",
+        "election_type",
+        "actor_type",
+        "instrument_type",
+        "power_type",
+        "priority",
+        "result_code",
+        "source"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "rule_id": { "type": "string", "minLength": 1 },
+        "election_type": { "$ref": "#/$defs/electionType" },
+        "actor_type": { "type": "string", "minLength": 1 },
+        "instrument_type": { "type": "string", "minLength": 1 },
+        "power_type": {
+          "type": "string",
+          "enum": [
+            "propose_or_introduce",
+            "legislate",
+            "appropriate_or_raise_revenue",
+            "regulate",
+            "appoint",
+            "negotiate_or_enter_agreement",
+            "procure_or_administer",
+            "implement_finally"
+          ]
+        },
+        "priority": { "type": "integer" },
+        "result_code": { "$ref": "#/$defs/authorityCode" },
+        "source": { "type": "string", "minLength": 1 },
+        "reviewer": { "type": ["string", "null"] },
+        "prerequisites": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "conflict_behaviour": { "type": "string", "default": "abstain_on_tie" }
+      }
+    },
+    "fiscalBaseline": {
+      "type": "object",
+      "required": [
+        "baseline_id",
+        "currency",
+        "fiscal_year",
+        "budget_boundary",
+        "accounting_basis",
+        "price_basis",
+        "horizon_years"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "baseline_id": { "type": "string", "minLength": 1 },
+        "currency": { "type": "string", "minLength": 3, "maxLength": 3 },
+        "fiscal_year": { "type": "string", "minLength": 1 },
+        "budget_boundary": { "type": "string", "minLength": 1 },
+        "accounting_basis": { "type": "string", "enum": ["cash", "accrual"] },
+        "price_basis": { "type": "string", "enum": ["nominal", "real"] },
+        "horizon_years": { "type": "integer", "minimum": 1 },
+        "indexation": { "type": ["string", "null"] },
+        "debt_interest_convention": { "type": ["string", "null"] },
+        "source": { "type": ["string", "null"] }
+      }
+    }
+  }
+}
