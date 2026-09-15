@@ -19,15 +19,17 @@ _SOURCE_LABELS = {"source_backed", "jurisdiction_profile_default", "analyst_assu
 def assess(
     profile: Optional[JurisdictionProfile],
     scenario: Optional[Scenario],
+    instrument_type: str,
     rule_set_version: Optional[str] = None,
 ):
-    if profile is None or not profile.mandatory_gate_catalog:
+    stages = profile.gates_for_instrument(instrument_type) if profile is not None else ()
+    if profile is None or not stages:
         return make_result(
             dimension=DimensionName.TIMELINE_PLAUSIBILITY,
             finding_code="timeline_not_modelled",
             evidence_state=EvidenceState.NOT_ASSESSABLE,
-            plain_language_finding="No staged gate catalog exists to build a critical path from.",
-            missing_information=("mandatory_gate_catalog",),
+            plain_language_finding=f"No staged gate catalog exists for instrument '{instrument_type}' to build a critical path from.",
+            missing_information=(f"mandatory_gate_catalog:{instrument_type}",),
             rule_set_version=rule_set_version,
         )
     if scenario is None:
@@ -40,7 +42,6 @@ def assess(
             rule_set_version=rule_set_version,
         )
 
-    stages = profile.mandatory_gate_catalog
     durations = scenario.gate_durations_months
     sources = scenario.gate_duration_source
 

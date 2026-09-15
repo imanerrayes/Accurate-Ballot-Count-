@@ -48,7 +48,7 @@ def presidential_profile() -> JurisdictionProfile:
             price_basis="nominal",
             horizon_years=5,
         ),
-        mandatory_gate_catalog=("legislative_passage", "appropriation", "assent"),
+        mandatory_gate_catalog={"national_tax": ("legislative_passage", "appropriation", "assent")},
     )
 
 

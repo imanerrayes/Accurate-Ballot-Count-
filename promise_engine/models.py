@@ -54,6 +54,7 @@ class SourceTier(str, Enum):
     FORMALLY_ADOPTED_PROGRAMME = "formally_adopted_programme"
     SPEECH_OR_LEAFLET = "speech_or_leaflet"
     INTERVIEW = "interview"
+    SOCIAL_MEDIA_POST = "social_media_post"
     THIRD_PARTY_SUMMARY = "third_party_summary"
 
 
@@ -231,6 +232,14 @@ class PoliticalEntity:
     aliases: Tuple[str, ...] = ()
     effective_from: Optional[date] = None
     effective_to: Optional[date] = None
+    national_party: Optional[str] = None
+    """The entity's national party affiliation (e.g. "Democratic", "Republican",
+    "Independent"), distinct from ``entity_id``/``name`` which identify the
+    specific candidate or state party organization. Used only to group
+    promises for a party-level comparison (Section 9, scenarios comparing
+    party platforms rather than individual candidates); it never changes
+    extraction, evidence thresholds, or rule application (Section 16,
+    matched-input neutrality)."""
 
 
 @dataclass(frozen=True)
@@ -388,7 +397,15 @@ class JurisdictionProfile:
     government_system: str
     legal_rules: Tuple[LegalRule, ...] = ()
     fiscal_baseline: Optional[FiscalBaseline] = None
-    mandatory_gate_catalog: Tuple[str, ...] = ()
+    mandatory_gate_catalog: Mapping[str, Tuple[str, ...]] = field(default_factory=dict)
+    """Ordered mandatory gates, keyed by ``instrument_type``. Real
+    procedure differs by instrument even within one jurisdiction — for
+    example, ordinary federal legislation requires Senate cloture while
+    budget reconciliation does not — so a single flat gate list cannot
+    represent it accurately."""
+
+    def gates_for_instrument(self, instrument_type: str) -> Tuple[str, ...]:
+        return self.mandatory_gate_catalog.get(instrument_type, ())
 
     def is_effective(self, as_of: date) -> bool:
         if as_of < self.effective_from:

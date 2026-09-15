@@ -14,7 +14,7 @@ by a versioned evidence store, rule registry, and append-only audit log.
 
 | Stage | Module |
 |---|---|
-| 1. Election context and jurisdiction profile | `promise_engine.jurisdiction`, `promise_engine.models.JurisdictionProfile` |
+| 1. Election context and jurisdiction profile | `promise_engine.jurisdiction`, `promise_engine.models.JurisdictionProfile`, `promise_engine.jurisdictions.us_congress`, `promise_engine.scope` |
 | 2. Party roster and immutable source capture | `promise_engine.pipeline.roster`, `promise_engine.pipeline.capture` |
 | 3. OCR, translation and atomic promise extraction | `promise_engine.pipeline.extraction` |
 | 4. Policy specification and comparison matching | `promise_engine.pipeline.specification`, `promise_engine.pipeline.matching` |
@@ -25,6 +25,96 @@ by a versioned evidence store, rule registry, and append-only audit log.
 Governing layer: `promise_engine.evidence_store` (append-only versioning
 plus audit log) and `promise_engine.canonical` (deterministic
 serialization and content hashing for reproducibility).
+
+Scope selection: `promise_engine.scope` (which races and which sources —
+see "Scoping real elections" below) and `promise_engine.jurisdictions.*`
+(cited jurisdiction profiles for a real legislature, starting with the
+U.S. Congress).
+
+## Scoping real elections
+
+The engine is designed to run against any combination of races, not one
+fixed roster. `promise_engine.scope` generalizes race and source-policy
+selection into two composable objects instead of a separate code path per
+scenario:
+
+- `ScopeQuery` — which races: one race, a state's delegation, every
+  competitive Senate seat, one race per region, an issue across races, and
+  so on.
+- `CollectionPolicy` — which source tiers to collect (official sites only,
+  plus platforms, plus speeches and social media) and the collection time
+  window (full cycle, or only after each party's nominee is settled).
+
+| # | Scenario | Constructor |
+|---|---|---|
+| 1-2 | One Senate race / one House district | `scope.one_race(race_id)` |
+| 3 | One competitive Senate race per region | `scope.one_competitive_race_per_region(OfficeType.US_SENATE, cycle)` |
+| 4-5 | Selected Senate races / House districts | `scope.selected_races([...])` |
+| 6 | One state's Senate and House races | `scope.one_state(state, cycle)` |
+| 7 | One state's federal and state-level races | `scope.one_state(state, cycle, office_types={...GOVERNOR, STATE_LEGISLATURE_*})` |
+| 8-11 | All competitive/all Senate or House races | `scope.all_of_office(office_type, cycle, competitive_only=...)` |
+| 12 | All federal congressional races | `scope.all_federal_congressional(cycle, competitive_only=...)` |
+| 13-14 | One issue across all races / selected states | `scope.issue_across_races(topics, cycle, states=...)` |
+| 15-16 | Party platforms rather than candidates / D vs. R nationally | `scope.group_by_national_party(entities)` over any resolved scope |
+| 17 | Track by office level | the `office_types` filter on any `ScopeQuery` |
+| 20 | Official campaign websites only | `scope.OFFICIAL_SOURCES_ONLY` |
+| 21 | Official sources plus manifestos/platforms | `scope.OFFICIAL_PLUS_PLATFORMS` |
+| 22 | Official sources plus speeches, interviews, social media | `scope.OFFICIAL_PLUS_SPEECHES_AND_SOCIAL` |
+| 23-24 | Full cycle / only after nomination | `CollectionPolicy(window_start=..., only_after_nomination=True, nomination_dates={...})` |
+
+Scenarios 18-19 (database-first vs. feasibility-engine-first) and 25-35
+(product surface: research database, public site, API, dashboard, and so
+on) are build-sequencing and deployment decisions, not scope filters —
+they're addressed by the build plan below, since every surface is a thin
+layer over the same `promise_engine` core.
+
+`Race`, the record `ScopeQuery` filters over, holds no built-in data: its
+`competitiveness_rating` and `competitiveness_source` fields exist so a
+caller can cite a named rating service (Cook Political Report, Sabato's
+Crystal Ball, Inside Elections) verbatim, and `entity_ids` links to
+candidates populated from FEC candidate filings. This repository ships no
+2026 race roster, because asserting one without a live, cited import would
+violate the same evidence-precedes-inference rule the engine enforces
+everywhere else. Populating the real universe is a data-import task, not a
+scope-layer one — see "Next step" below.
+
+## Recommended default scope and build plan
+
+Adopted default: **a national 2026 U.S. midterm promise database covering
+all Senate races and selected competitive House races**, collected under
+`scope.OFFICIAL_PLUS_PLATFORMS` (official campaign sites, party pages, and
+adopted platforms; speeches, interviews, and social media added only as an
+explicit, separately-labelled extension per COL-003, never silently
+blended in).
+
+Build sequence, matching the specification's own phased delivery plan
+(Section 18):
+
+1. **Stage 1 — collect and compare.** Roster, immutable source capture,
+   atomic-claim extraction, and side-by-side comparison. No legal, fiscal,
+   or historical claim is made yet. This is what `pipeline.roster` through
+   `pipeline.matching` already implement.
+2. **Stage 2 — legal authority, procedure, budget, and implementation
+   dependencies.** `jurisdictions.us_congress` is the first real
+   jurisdiction profile for this stage: it encodes actual House and Senate
+   procedure (bicameral passage, the Origination Clause, Senate cloture,
+   budget reconciliation) with citations, replacing the synthetic "Demo
+   Federal Republic" fixture used in tests. A Congressional Budget Office
+   baseline still needs to be supplied per assessment (Section 9.6); this
+   profile does not fabricate one.
+3. **Stage 3 — historical fulfillment and validated feasibility
+   estimates.** Requires the governed, dual-coded historical pledge corpus
+   described in Section 12.1 before `pipeline.dimensions.historical` has
+   real data to run on, and — per the specification's own gating logic —
+   the prospective-probability layer (H4) stays disabled regardless, since
+   its validation gates (Section 12.3) are a separate research program.
+
+**Next step, if you want it:** importing the real 2026 Senate and House
+race universe (which seats are up, official candidates per FEC filings,
+and cited competitiveness ratings) via web lookup, so `scope.py` has real
+`Race` records to resolve queries against instead of test fixtures. This
+is a distinct, larger task from the architecture work above and is not
+done automatically here.
 
 ## Core design rules encoded in the code
 
@@ -95,10 +185,15 @@ system described in the full specification. In particular:
   substantial NLP and human-review problem in its own right; this
   implementation enforces the provenance *contract* for those fields
   rather than performing the extraction itself.
-- **Legal, fiscal, capacity, and dependency rules are illustrative.**
-  `JurisdictionProfile` fixtures in this repository are examples for
-  testing the gating logic, not maintained legal or fiscal authorities for
-  any real jurisdiction.
+- **Most legal, fiscal, capacity, and dependency rules are illustrative;
+  one is real but unreviewed.** Test and demo fixtures use a synthetic
+  "Demo Federal Republic." `jurisdictions.us_congress` is a real profile
+  for the U.S. House and Senate with citations to the Constitution, Senate
+  Standing Rules, and the Congressional Budget Act — but Section 7.3
+  requires a named, qualified legal reviewer on every rule before publication,
+  and this profile's `reviewer` field is `None` until one signs off. It is
+  not a substitute for that review, and it carries no fiscal baseline (a
+  Congressional Budget Office baseline must be supplied per assessment).
 - **The historical/predictive layer (H4) is out of scope and disabled by
   design.** Only descriptive base rates (H1) are implemented
   (`pipeline.dimensions.historical`); the specification's validation gates
