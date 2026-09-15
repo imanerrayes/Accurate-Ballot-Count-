@@ -148,6 +148,72 @@ candidacies (already, two of the 18 House incumbents captured here have
 announced they are not running again) change continuously between now and
 the November 2026 election.
 
+## How to get me more data
+
+This session's network policy blocks direct page fetches to every source
+site tried (confirmed via both the fetch tool and a raw `curl`, which got
+a 403 from the egress proxy — the destination host isn't on this
+session's allowed list, not a code problem). Two ways around that:
+
+**Option A — you extract, I ingest.** `promise_engine/data/import_tools.py`
+loads plain CSVs into the same `Race`/`PoliticalEntity` records the engine
+already uses, and `promise_engine/data/templates/` has three fill-in
+templates. Priority order:
+
+1. **`senate_ratings_template.csv`** — 26 of the 35 Senate races have no
+   cited rating yet. The 9 known rows are pre-filled and marked; open
+   [Cook Political Report's Senate ratings](https://www.cookpolitical.com/ratings/senate-race-ratings)
+   and fill in `rating`, `source_name`, `source_url`, `as_of_date` for the
+   remaining blank rows. Sabato's Crystal Ball
+   (https://centerforpolitics.org/crystalball/2026-senate/) or Inside
+   Elections work as well or as a cross-check — just name the actual
+   source you used.
+2. **`house_ratings_template.csv`** — the 18 known Toss Up rows are
+   pre-filled (13 flagged `district NOT confirmed this session`; please
+   verify those against [Cook's House ratings](https://www.cookpolitical.com/ratings/house-race-ratings)
+   or [Ballotpedia](https://ballotpedia.org) while you're there). More
+   valuable than fixing those 13: add rows for Cook's Lean and Likely
+   tiers, which this import doesn't cover at all yet.
+3. **`fec_candidates_template.csv`** — who is actually running, per
+   [FEC candidate filings](https://www.fec.gov/data/candidates/?election_year=2026&office=S)
+   (`&office=H` for House). This is the piece that turns a `Race` from "a
+   seat with a rating" into one linked to actual `entity_ids` — currently
+   empty on every record.
+
+Once filled, load and merge a file like this:
+
+```python
+from promise_engine.data.import_tools import load_senate_ratings_csv, merge_ratings_into_universe
+from promise_engine.data.races_2026 import SENATE_UNIVERSE_2026
+
+updates = load_senate_ratings_csv("senate_ratings_filled.csv", cycle=2026)
+universe = merge_ratings_into_universe(SENATE_UNIVERSE_2026, updates)
+```
+
+If filling a CSV is more friction than it's worth, just paste the raw
+ratings table text from the page and I'll parse it the way I did for this
+session's initial import — less reliable than a CSV, so I'll flag
+anything ambiguous rather than guess.
+
+**Option B — API, where one actually exists.** The FEC publishes a free,
+public, documented API (no API for Cook Political Report, Sabato's, or
+Inside Elections exists — those are proprietary products; there is no
+"just connect via API" option for them). `promise_engine/data/connectors/fec.py`
+is a real, working connector against `api.open.fec.gov` — not a stub —
+that this session cannot execute (same egress block as above), but you or
+any environment that can reach that host can:
+
+```python
+from promise_engine.data.connectors.fec import fetch_candidates
+
+senate_candidates_ia = fetch_candidates(office="S", cycle=2026, state="IA")
+```
+
+Get a free key at https://api.data.gov/signup/ (`DEMO_KEY` works for
+light testing at a lower rate limit). Hand me the output — as Python
+objects if you're running it in a notebook I can read, or dumped to the
+`fec_candidates_template.csv` shape — and it merges in the same way.
+
 ## Core design rules encoded in the code
 
 - **Evidence precedes inference.** Every extracted or assessed field

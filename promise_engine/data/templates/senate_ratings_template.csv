@@ -1,0 +1,36 @@
+state,rating,source_name,source_url,as_of_date,notes
+AL,,,,,
+AK,,,,,
+AR,,,,,
+CO,,,,,
+DE,,,,,
+GA,Toss Up,Cook Political Report,https://www.cookpolitical.com/ratings/senate-race-ratings,2026-08-20,already in races_2026.py - overwrite only if the rating has changed
+ID,,,,,
+IL,,,,,
+IA,Toss Up,Cook Political Report,https://www.cookpolitical.com/ratings/senate-race-ratings,2026-08-20,already in races_2026.py - overwrite only if the rating has changed
+KS,,,,,
+KY,,,,,
+LA,,,,,
+ME,Toss Up,Cook Political Report,https://www.cookpolitical.com/ratings/senate-race-ratings,2026-08-20,already in races_2026.py - overwrite only if the rating has changed
+MA,,,,,
+MI,Toss Up,Cook Political Report,https://www.cookpolitical.com/ratings/senate-race-ratings,2026-08-20,already in races_2026.py - overwrite only if the rating has changed
+MN,Likely Democrat,Cook Political Report,https://www.cookpolitical.com/ratings/senate-race-ratings,2026-08-20,already in races_2026.py - overwrite only if the rating has changed
+MS,,,,,
+MT,,,,,
+NE,,,,,
+NH,Lean Democrat,Cook Political Report,https://www.cookpolitical.com/ratings/senate-race-ratings,2026-08-20,already in races_2026.py - overwrite only if the rating has changed
+NJ,,,,,
+NM,,,,,
+NC,Lean Democrat,Cook Political Report,https://www.cookpolitical.com/ratings/senate-race-ratings,2026-08-20,already in races_2026.py - overwrite only if the rating has changed
+OK,,,,,
+OR,,,,,
+RI,,,,,
+SC,,,,,
+SD,,,,,
+TN,,,,,
+TX,Toss Up,Cook Political Report,https://www.cookpolitical.com/ratings/senate-race-ratings,2026-08-20,already in races_2026.py - overwrite only if the rating has changed
+VA,,,,,
+WV,,,,,
+WY,,,,,
+FL,Safe Republican,Sabato's Crystal Ball,https://centerforpolitics.org/crystalball/2026-senate/,2026-08-26,special election; already in races_2026.py - overwrite only if the rating has changed
+OH,,,,,special election
