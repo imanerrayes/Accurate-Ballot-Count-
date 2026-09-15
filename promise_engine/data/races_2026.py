@@ -1,70 +1,60 @@
-"""A real, cited first import of the 2026 U.S. midterm race universe.
+"""The 2026 U.S. midterm race universe, built from two extraction batches.
 
-Retrieved 2026-09-15, via the assistant's WebSearch tool only. WebFetch
-(direct page retrieval) was blocked by this environment's network egress
-policy for every domain tried, including Wikipedia, Ballotpedia, Cook
-Political Report, and 270toWin — so every fact below comes from
-WebSearch's synthesized snippets of those sources, not a direct fetch of
-the primary page. That is a real limitation on how much can be trusted
-here without a follow-up check:
+Batch 1 (2026-09-15, in-session): the assistant's own WebSearch-sourced
+partial import — 9 of 35 Senate races and 18 House Toss Up races, used
+here as the base skeleton (it supplies each race's Census region, which
+neither extraction batch's CSV carries as a column).
 
-- The 35-seat Senate universe (33 Class II regular elections plus special
-  elections in Florida and Ohio) is corroborated across multiple
-  independent search results and is high confidence.
-- Only 8 of the 35 Senate races carry a cited competitiveness rating.
-  Several other races were repeatedly mentioned as "competitive" in
-  search results (e.g. Alaska) without a specific rating tier attached to
-  any single snippet, so — consistent with this engine's own
-  abstain-rather-than-invent rule — they are left with
-  ``competitiveness_rating=None`` rather than guessed.
-- The House data covers exactly one rating tier (Cook Political Report's
-  18 toss-ups as of its June 18, 2026 print snapshot), not the full set
-  of competitive House races. Cook also separately publishes Lean and
-  Likely tiers not captured in this import.
-- Of the 18 House races, 5 district numbers were independently confirmed
-  by a targeted search this session (Ballotpedia/GovTrack/Congress.gov
-  results): OH-09, IA-01, NE-02, ME-02, WA-03. The other 13 district
-  numbers come from the assistant's pre-existing reference knowledge, not
-  a source retrieved this session, and are flagged in ``notes``
-  accordingly — verify against the House Clerk's roster or FEC candidate
-  filings before relying on them.
-- No candidate-level entity resolution (FEC filer IDs, challenger names)
-  has been done. ``entity_ids`` is empty on every record here.
-- Search results surfaced that at least two of the 18 toss-up incumbents
-  (Jared Golden, ME-02; Don Bacon, NE-02) have announced they will not
-  seek re-election in 2026, which makes those open-seat races rather than
-  incumbent-defense races — noted per record.
+Batch 2 (2026-09-15, manual extraction — see
+``data/extracted/2026-09-15/PROVENANCE.md``): the repository owner's own
+extraction from Cook Political Report's Senate ratings (Aug 20, 2026
+snapshot, filling in the 26 races batch 1 left unrated) and House ratings
+(Sep 11, 2026 snapshot, 70 races across five tiers, superseding batch 1's
+18-race Toss-Up-only subset), plus a 674-row FEC Senate candidate export
+(see ``entities_2026.py`` — not merged into ``Race.entity_ids`` here; see
+that module for why).
 
-Treat this module as a provisional, timestamped snapshot to refresh before
-publication, not a maintained feed. A production system would replace it
-with a live, scheduled import against FEC filings and a licensed or
-publicly published rating feed, per README.md, "Scoping real elections."
+Combined, Senate coverage is now complete: all 35 races (33 Class II
+regular elections plus the Florida and Ohio specials) carry a cited
+Cook Political Report or Sabato's Crystal Ball rating. House coverage is
+70 races — real, but still a fraction of 435 seats, and only as current
+as the Sep 11, 2026 snapshot it was pulled from.
+
+Treat this module as a timestamped snapshot, not a maintained feed:
+ratings and candidacies change continuously between now and the November
+2026 election. A new manual extraction or API pull should land in a new
+dated ``data/extracted/<date>/`` batch and be merged in here, never by
+editing a prior batch's files in place.
 """
 
 from __future__ import annotations
 
+import dataclasses
+from pathlib import Path
+
+from .import_tools import load_house_ratings_csv, load_senate_ratings_csv, merge_ratings_into_universe
 from ..scope import OfficeType, Race, Region
 
 CYCLE = 2026
-RETRIEVED = "2026-09-15"
+
+_EXTRACTED_DIR = Path(__file__).parent / "extracted" / "2026-09-15"
 
 _COOK_SENATE_CITATION = (
     "Cook Political Report, Senate Race Ratings, print snapshot dated Aug 20, 2026 "
-    "(https://www.cookpolitical.com/print/ratings/races/senate; "
-    "https://www.cookpolitical.com/ratings/senate-race-ratings), "
-    f"retrieved via web search {RETRIEVED}"
+    "(https://www.cookpolitical.com/print/ratings/races/senate), "
+    "retrieved via web search 2026-09-15"
 )
 _SABATO_SENATE_CITATION = (
     "Sabato's Crystal Ball, Center for Politics at the University of Virginia, "
     "ratings updated Aug 26, 2026 (https://centerforpolitics.org/crystalball/2026-senate/), "
-    f"retrieved via web search {RETRIEVED}"
+    "retrieved via web search 2026-09-15"
 )
 _COOK_HOUSE_CITATION = (
     "Cook Political Report, House Race Ratings, print snapshot dated Jun 18, 2026 "
     "(https://www.cookpolitical.com/print/ratings/races/house), toss-up tier as reported by "
     "The Hill, \"Cook Political Report unveils 18 toss-up House races for 2026\" "
     "(https://thehill.com/homenews/campaign/5130655-cook-political-report-democrats-republicans/), "
-    f"retrieved via web search {RETRIEVED}"
+    "retrieved via web search 2026-09-15"
 )
 
 _UNVERIFIED_DISTRICT_NOTE = (
@@ -78,159 +68,143 @@ _UNVERIFIED_DISTRICT_NOTE = (
 _STATE_REGION = {
     "AL": Region.SOUTH, "AK": Region.WEST, "AR": Region.SOUTH, "CO": Region.WEST,
     "DE": Region.SOUTH, "GA": Region.SOUTH, "ID": Region.WEST, "IL": Region.MIDWEST,
-    "IA": Region.MIDWEST, "KS": Region.MIDWEST, "KY": Region.SOUTH, "LA": Region.SOUTH,
-    "ME": Region.NORTHEAST, "MA": Region.NORTHEAST, "MI": Region.MIDWEST, "MN": Region.MIDWEST,
-    "MS": Region.SOUTH, "MT": Region.WEST, "NE": Region.MIDWEST, "NH": Region.NORTHEAST,
-    "NJ": Region.NORTHEAST, "NM": Region.WEST, "NC": Region.SOUTH, "OK": Region.SOUTH,
-    "OR": Region.WEST, "RI": Region.NORTHEAST, "SC": Region.SOUTH, "SD": Region.MIDWEST,
-    "TN": Region.SOUTH, "TX": Region.SOUTH, "VA": Region.SOUTH, "WV": Region.SOUTH,
-    "WY": Region.WEST, "FL": Region.SOUTH, "OH": Region.MIDWEST, "CA": Region.WEST,
-    "NY": Region.NORTHEAST, "AZ": Region.WEST, "PA": Region.NORTHEAST, "WA": Region.WEST,
+    "IA": Region.MIDWEST, "IN": Region.MIDWEST, "KS": Region.MIDWEST, "KY": Region.SOUTH,
+    "LA": Region.SOUTH, "ME": Region.NORTHEAST, "MA": Region.NORTHEAST, "MI": Region.MIDWEST,
+    "MN": Region.MIDWEST, "MO": Region.MIDWEST, "MS": Region.SOUTH, "MT": Region.WEST,
+    "NE": Region.MIDWEST, "NH": Region.NORTHEAST, "NJ": Region.NORTHEAST, "NM": Region.WEST,
+    "NC": Region.SOUTH, "NV": Region.WEST, "OK": Region.SOUTH, "OR": Region.WEST,
+    "RI": Region.NORTHEAST, "SC": Region.SOUTH, "SD": Region.MIDWEST, "TN": Region.SOUTH,
+    "TX": Region.SOUTH, "VA": Region.SOUTH, "WV": Region.SOUTH, "WY": Region.WEST,
+    "FL": Region.SOUTH, "OH": Region.MIDWEST, "CA": Region.WEST, "NY": Region.NORTHEAST,
+    "AZ": Region.WEST, "PA": Region.NORTHEAST, "WA": Region.WEST, "WI": Region.MIDWEST,
 }
 
-#: Cook Political Report ratings actually cited for a specific 2026 Senate
-#: race in this session's search results.
-_SENATE_COOK_RATINGS = {
-    "IA": "toss_up",
-    "TX": "toss_up",
-    "ME": "toss_up",
-    "GA": "toss_up",
-    "MI": "toss_up",
-    "MN": "likely_d",
-    "NC": "lean_d",
-    "NH": "lean_d",
+#: Cook Political Report ratings the assistant's own WebSearch-based import
+#: (batch 1) found cited for a specific 2026 Senate race, before the
+#: manual extraction (batch 2) filled in the rest.
+_SEED_SENATE_COOK_RATINGS = {
+    "IA": "toss_up", "TX": "toss_up", "ME": "toss_up", "GA": "toss_up", "MI": "toss_up",
+    "MN": "likely_d", "NC": "lean_d", "NH": "lean_d",
 }
 
-#: All 33 states with a Class II Senate seat up in 2026, per corroborating
-#: search results (Wikipedia/Ballotpedia-derived synthesis).
+#: All 33 states with a Class II Senate seat up in 2026.
 _SENATE_CLASS_II_STATES = (
     "AL", "AK", "AR", "CO", "DE", "GA", "ID", "IL", "IA", "KS", "KY", "LA", "ME", "MA",
     "MI", "MN", "MS", "MT", "NE", "NH", "NJ", "NM", "NC", "OK", "OR", "RI", "SC", "SD",
     "TN", "TX", "VA", "WV", "WY",
 )
 
-#: The two 2026 Senate special elections, per the same search results.
-_SENATE_SPECIAL_STATES = ("FL", "OH")
 
+def _build_senate_seed() -> tuple[Race, ...]:
+    """Batch 1: the 35-race skeleton with regions assigned, and whatever
+    ratings batch 1 already had cited."""
 
-def _build_senate_universe() -> tuple[Race, ...]:
     races = []
     for state in _SENATE_CLASS_II_STATES:
-        rating = _SENATE_COOK_RATINGS.get(state)
+        rating = _SEED_SENATE_COOK_RATINGS.get(state)
         races.append(
             Race(
-                race_id=f"sen-2026-{state.lower()}",
+                race_id=f"sen-{CYCLE}-{state.lower()}",
                 office_type=OfficeType.US_SENATE,
                 state=state,
                 cycle=CYCLE,
                 region=_STATE_REGION[state],
                 competitiveness_rating=rating,
                 competitiveness_source=_COOK_SENATE_CITATION if rating else None,
-                notes=None if rating else "No specific rating tier found in this session's search results.",
             )
         )
-
-    # Florida: special election, rated by Sabato's Crystal Ball (Safe R) in
-    # this session's search results, not by the Cook citation above.
     races.append(
         Race(
-            race_id="sen-2026-fl-special",
-            office_type=OfficeType.US_SENATE,
-            state="FL",
-            cycle=CYCLE,
-            region=_STATE_REGION["FL"],
-            competitiveness_rating="safe_r",
+            race_id="sen-2026-fl-special", office_type=OfficeType.US_SENATE, state="FL", cycle=CYCLE,
+            region=_STATE_REGION["FL"], competitiveness_rating="safe_r",
             competitiveness_source=_SABATO_SENATE_CITATION,
             notes="Special election, not a Class II regular election.",
         )
     )
-    # Ohio: special election; no specific rating tier surfaced this session.
     races.append(
         Race(
-            race_id="sen-2026-oh-special",
-            office_type=OfficeType.US_SENATE,
-            state="OH",
-            cycle=CYCLE,
-            region=_STATE_REGION["OH"],
-            competitiveness_rating=None,
-            competitiveness_source=None,
-            notes="Special election, not a Class II regular election. No rating tier found in this session's search results.",
+            race_id="sen-2026-oh-special", office_type=OfficeType.US_SENATE, state="OH", cycle=CYCLE,
+            region=_STATE_REGION["OH"], notes="Special election, not a Class II regular election.",
         )
     )
     return tuple(races)
 
 
-#: (state, district, incumbent_name, notes) for the 5 races whose district
-#: number was independently confirmed by a targeted search this session.
-_HOUSE_CONFIRMED = (
-    ("OH", "09", "Marcy Kaptur (D)", "District confirmed via Ballotpedia/GovTrack/Congress.gov, retrieved this session."),
-    ("IA", "01", "Mariannette Miller-Meeks (R)", "District confirmed via Ballotpedia/GovTrack/Congress.gov, retrieved this session."),
-    ("NE", "02", "Don Bacon (R)", "District confirmed via Ballotpedia/GovTrack/Congress.gov, retrieved this session. "
-                                    "Search results indicate Bacon announced he will not seek re-election in 2026 — "
-                                    "this is an open-seat race, not incumbent defense; verify current candidate roster."),
-    ("ME", "02", "Jared Golden (D)", "District confirmed via Ballotpedia/GovTrack/Congress.gov, retrieved this session. "
-                                       "Search results indicate Golden announced he will not seek re-election in 2026 — "
-                                       "this is an open-seat race, not incumbent defense; verify current candidate roster."),
-    ("WA", "03", "Marie Gluesenkamp Perez (D)", "District confirmed via Ballotpedia/GovTrack/Congress.gov, retrieved this session."),
+#: (state, district, incumbent_name, notes) confirmed by a targeted search
+#: in batch 1.
+_HOUSE_SEED_CONFIRMED = (
+    ("OH", "09", "Marcy Kaptur (D)", "District confirmed via Ballotpedia/GovTrack/Congress.gov, retrieved batch 1."),
+    ("IA", "01", "Mariannette Miller-Meeks (R)", "District confirmed via Ballotpedia/GovTrack/Congress.gov, retrieved batch 1."),
+    ("NE", "02", "Don Bacon (R)", "District confirmed via Ballotpedia/GovTrack/Congress.gov, retrieved batch 1."),
+    ("ME", "02", "Jared Golden (D)", "District confirmed via Ballotpedia/GovTrack/Congress.gov, retrieved batch 1."),
+    ("WA", "03", "Marie Gluesenkamp Perez (D)", "District confirmed via Ballotpedia/GovTrack/Congress.gov, retrieved batch 1."),
 )
-
-#: (state, district, incumbent_name) for the remaining 13 toss-ups, where
-#: the district number is from the assistant's pre-existing reference
-#: knowledge rather than a source retrieved this session (see
-#: _UNVERIFIED_DISTRICT_NOTE).
-_HOUSE_UNVERIFIED_DISTRICT = (
-    ("CA", "13", "Adam Gray (D)"),
-    ("CA", "45", "Derek Tran (D)"),
-    ("NM", "02", "Gabe Vasquez (D)"),
-    ("NY", "04", "Laura Gillen (D)"),
-    ("NC", "01", "Don Davis (D)"),
-    ("OH", "13", "Emilia Sykes (D)"),
-    ("TX", "34", "Vicente Gonzalez (D)"),
-    ("AZ", "01", "David Schweikert (R)"),
-    ("AZ", "06", "Juan Ciscomani (R)"),
-    ("CO", "08", "Gabe Evans (R)"),
-    ("MI", "07", "Tom Barrett (R)"),
-    ("PA", "07", "Ryan Mackenzie (R)"),
+_HOUSE_SEED_UNVERIFIED = (
+    ("CA", "13", "Adam Gray (D)"), ("CA", "45", "Derek Tran (D)"), ("NM", "02", "Gabe Vasquez (D)"),
+    ("NY", "04", "Laura Gillen (D)"), ("NC", "01", "Don Davis (D)"), ("OH", "13", "Emilia Sykes (D)"),
+    ("TX", "34", "Vicente Gonzalez (D)"), ("AZ", "01", "David Schweikert (R)"), ("AZ", "06", "Juan Ciscomani (R)"),
+    ("CO", "08", "Gabe Evans (R)"), ("MI", "07", "Tom Barrett (R)"), ("PA", "07", "Ryan Mackenzie (R)"),
     ("PA", "10", "Scott Perry (R)"),
 )
 
 
-def _build_house_tossups() -> tuple[Race, ...]:
+def _build_house_seed() -> tuple[Race, ...]:
+    """Batch 1: 18 Toss Up races. Every one of these is superseded (some
+    with an updated rating) by batch 2's 70-race extraction, but the seed
+    still supplies the region field batch 2's CSV loader doesn't set."""
+
     races = []
-    for state, district, incumbent, note in _HOUSE_CONFIRMED:
+    for state, district, incumbent, note in _HOUSE_SEED_CONFIRMED:
         races.append(
             Race(
-                race_id=f"house-2026-{state.lower()}-{district}",
-                office_type=OfficeType.US_HOUSE,
-                state=state,
-                cycle=CYCLE,
-                district=district,
-                region=_STATE_REGION[state],
-                competitiveness_rating="toss_up",
-                competitiveness_source=_COOK_HOUSE_CITATION,
-                notes=f"Incumbent per search results: {incumbent}. {note}",
+                race_id=f"house-{CYCLE}-{state.lower()}-{district}", office_type=OfficeType.US_HOUSE,
+                state=state, cycle=CYCLE, district=district, region=_STATE_REGION[state],
+                competitiveness_rating="toss_up", competitiveness_source=_COOK_HOUSE_CITATION,
+                notes=f"Incumbent per batch-1 search results: {incumbent}. {note}",
             )
         )
-    for state, district, incumbent in _HOUSE_UNVERIFIED_DISTRICT:
+    for state, district, incumbent in _HOUSE_SEED_UNVERIFIED:
         races.append(
             Race(
-                race_id=f"house-2026-{state.lower()}-{district}",
-                office_type=OfficeType.US_HOUSE,
-                state=state,
-                cycle=CYCLE,
-                district=district,
-                region=_STATE_REGION[state],
-                competitiveness_rating="toss_up",
-                competitiveness_source=_COOK_HOUSE_CITATION,
-                notes=f"Incumbent per search results: {incumbent}. {_UNVERIFIED_DISTRICT_NOTE}",
+                race_id=f"house-{CYCLE}-{state.lower()}-{district}", office_type=OfficeType.US_HOUSE,
+                state=state, cycle=CYCLE, district=district, region=_STATE_REGION[state],
+                competitiveness_rating="toss_up", competitiveness_source=_COOK_HOUSE_CITATION,
+                notes=f"Incumbent per batch-1 search results: {incumbent}. {_UNVERIFIED_DISTRICT_NOTE}",
             )
         )
     return tuple(races)
 
 
-#: All 35 Senate races up in the 2026 cycle (33 Class II + 2 special).
-SENATE_UNIVERSE_2026: tuple[Race, ...] = _build_senate_universe()
+def _ensure_region(races: tuple[Race, ...]) -> tuple[Race, ...]:
+    """Fill in region for any race batch 2 added that the seed didn't have
+    (import_tools' CSV loaders don't set region — it isn't a CSV column)."""
 
-#: The 18 House races Cook Political Report rated Toss Up as of its
-#: June 18, 2026 snapshot. Not the full set of competitive House races.
-HOUSE_TOSSUPS_2026: tuple[Race, ...] = _build_house_tossups()
+    return tuple(
+        r if r.region is not None else dataclasses.replace(r, region=_STATE_REGION.get(r.state))
+        for r in races
+    )
+
+
+_senate_seed = _build_senate_seed()
+_house_seed = _build_house_seed()
+
+_senate_updates = load_senate_ratings_csv(_EXTRACTED_DIR / "senate_ratings.csv", cycle=CYCLE)
+_house_updates = load_house_ratings_csv(_EXTRACTED_DIR / "house_ratings.csv", cycle=CYCLE)
+
+#: All 35 Senate races up in the 2026 cycle. Every race now carries a
+#: cited rating: 33 Class II races plus the Florida and Ohio specials.
+SENATE_UNIVERSE_2026: tuple[Race, ...] = _ensure_region(
+    merge_ratings_into_universe(_senate_seed, _senate_updates)
+)
+
+#: 70 House races across five Cook Political Report tiers (Likely
+#: Democrat, Lean Democrat, Toss Up, Lean Republican, Likely Republican)
+#: as of the Sep 11, 2026 snapshot. Not the full set of competitive House
+#: races, and nowhere near all 435 seats.
+HOUSE_RATED_RACES_2026: tuple[Race, ...] = _ensure_region(
+    merge_ratings_into_universe(_house_seed, _house_updates)
+)
+
+#: Retained for backward compatibility with code written against the
+#: narrower batch-1 name; identical to HOUSE_RATED_RACES_2026.
+HOUSE_TOSSUPS_2026 = HOUSE_RATED_RACES_2026

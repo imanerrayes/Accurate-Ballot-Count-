@@ -109,44 +109,48 @@ Build sequence, matching the specification's own phased delivery plan
 
 ## The 2026 data import
 
-`promise_engine/data/races_2026.py` is a real, cited, but partial import,
-retrieved 2026-09-15. Read its module docstring for the full provenance
-trail; in summary:
+`promise_engine/data/races_2026.py` and `entities_2026.py` are built from
+two merged extraction batches, both dated 2026-09-15 — read their module
+docstrings and `data/extracted/2026-09-15/PROVENANCE.md` for the full
+trail. In summary:
 
-- **Complete and high confidence:** all 35 Senate races up in 2026 (33
-  Class II regular elections plus special elections in Florida and Ohio),
-  corroborated across multiple independent search results.
-- **Partial:** only 8 of those 35 Senate races carry a cited
-  competitiveness rating (Cook Political Report and, for the Florida
-  special, Sabato's Crystal Ball). The rest are left `None` rather than
-  guessed — several, like Alaska, were repeatedly described as
-  competitive without a specific rating tier attached in any retrieved
-  snippet, and `resolve_scope` correctly excludes them from
-  `competitive_only` queries as a result.
-- **One rating tier only:** the 18 House races are exactly Cook's
-  June 18, 2026 Toss Up tier, not the full competitive House set (Cook
-  also publishes Lean and Likely tiers not captured here).
-- **Mixed confidence on House district numbers:** 5 of the 18 were
-  confirmed by a targeted search this session; the other 13 come from the
-  assistant's pre-existing reference knowledge and are flagged in each
-  record's `notes` field rather than presented as equally solid.
-- **Not done:** candidate-level entity resolution (FEC filer IDs,
-  challengers) — every `entity_ids` tuple is empty.
-- **A tooling limitation shaped this import:** WebFetch (direct page
-  retrieval) was blocked by this environment's network egress policy for
-  every domain tried, including Wikipedia, Ballotpedia, Cook Political
-  Report, and 270toWin. Everything above came from WebSearch's
-  synthesized snippets of those sources, which is inherently lossier than
-  a direct fetch of a full ratings table. A session with working page
-  fetch (or a licensed data feed) could complete this import in one pass
-  instead of leaving most Senate races and all but one House rating tier
-  unrated.
+- **Batch 1 (assistant, WebSearch-only):** partial — 9 of 35 Senate races
+  rated, 18 House Toss Up races. WebFetch (direct page retrieval) was
+  blocked by this environment's network egress policy for every domain
+  tried; everything came from WebSearch's synthesized snippets, which is
+  lossier than a direct table fetch.
+- **Batch 2 (repository owner, manual extraction):** filled the rest.
+  **Senate coverage is now complete** — all 35 races (33 Class II plus the
+  Florida and Ohio specials) carry a cited Cook Political Report or
+  Sabato's Crystal Ball rating, and `resolve_scope(..., competitive_only=True)`
+  now correctly returns 12 races (AK, GA, IA, KS, ME, MI, MN, NC, NE, NH,
+  OH, TX), not the 8 batch 1 could see. **House coverage expanded** from
+  18 Toss-Up-only races to **70 races across five Cook tiers** (Likely D,
+  Lean D, Toss Up, Lean R, Likely R) — every one of batch 1's original 18
+  reappears here, several with an updated rating once redistricting or a
+  retirement (e.g. Bacon in NE-02, Golden in ME-02) was reflected. It is
+  still 70 of 435 House seats, not full coverage.
+- **New: FEC candidate data.** `entities_2026.py` loads 673 Senate
+  candidate filings from a real FEC export. Two real limitations shape
+  it, documented in its module docstring: the export carries no
+  per-row election-year column, so "filed for this state's Senate race at
+  some point in FEC history" and "on the 2026 ballot" are not the same
+  claim from this file alone; and the raw data contains at least two
+  multi-state nuisance-filer patterns — "Gavin Solomon" filed as a
+  Republican Senate candidate in **40 different states**, "Owen Nicholas
+  Carlson" in 17, under a different party label in nearly every one.
+  `detect_multi_state_filers` catches exactly this (any name in 4+ states)
+  and `clean_senate_candidates` excludes it, rather than the engine
+  silently treating 40 filings by one person as 40 real candidacies. None
+  of this is merged into `Race.entity_ids` yet — that needs the cycle
+  confirmation the export doesn't carry.
 
-Treat this module as a timestamped snapshot, not a maintained feed:
-re-import before publishing anything built on it, since ratings and
-candidacies (already, two of the 18 House incumbents captured here have
-announced they are not running again) change continuously between now and
-the November 2026 election.
+Treat both modules as a timestamped snapshot, not a maintained feed:
+re-import before publishing anything built on them, since ratings and
+candidacies change continuously between now and the November 2026
+election. A future extraction should land in a new dated
+`data/extracted/<date>/` directory and be merged in, never overwrite a
+prior batch's files.
 
 ## How to get me more data
 
@@ -157,28 +161,28 @@ session's allowed list, not a code problem). Two ways around that:
 
 **Option A — you extract, I ingest.** `promise_engine/data/import_tools.py`
 loads plain CSVs into the same `Race`/`PoliticalEntity` records the engine
-already uses, and `promise_engine/data/templates/` has three fill-in
-templates. Priority order:
+already uses. The first round (see "The 2026 data import" above) closed
+the two biggest gaps — Senate ratings and Senate candidates — so what's
+left is narrower:
 
-1. **`senate_ratings_template.csv`** — 26 of the 35 Senate races have no
-   cited rating yet. The 9 known rows are pre-filled and marked; open
-   [Cook Political Report's Senate ratings](https://www.cookpolitical.com/ratings/senate-race-ratings)
-   and fill in `rating`, `source_name`, `source_url`, `as_of_date` for the
-   remaining blank rows. Sabato's Crystal Ball
-   (https://centerforpolitics.org/crystalball/2026-senate/) or Inside
-   Elections work as well or as a cross-check — just name the actual
-   source you used.
-2. **`house_ratings_template.csv`** — the 18 known Toss Up rows are
-   pre-filled (13 flagged `district NOT confirmed this session`; please
-   verify those against [Cook's House ratings](https://www.cookpolitical.com/ratings/house-race-ratings)
-   or [Ballotpedia](https://ballotpedia.org) while you're there). More
-   valuable than fixing those 13: add rows for Cook's Lean and Likely
-   tiers, which this import doesn't cover at all yet.
-3. **`fec_candidates_template.csv`** — who is actually running, per
-   [FEC candidate filings](https://www.fec.gov/data/candidates/?election_year=2026&office=S)
-   (`&office=H` for House). This is the piece that turns a `Race` from "a
-   seat with a rating" into one linked to actual `entity_ids` — currently
-   empty on every record.
+1. **House coverage beyond 70 races.** `promise_engine/data/templates/house_ratings_template.csv`
+   is still the right template; [Cook's House ratings](https://www.cookpolitical.com/ratings/house-race-ratings)
+   covers a subset of 435 seats even at its fullest, so this will never
+   be "complete" the way Senate now is — just progressively wider.
+2. **House candidate filings.** No House equivalent of `entities_2026.py`
+   exists yet. Same template and source as before:
+   [FEC candidate filings](https://www.fec.gov/data/candidates/?election_year=2026&office=H).
+3. **Cycle confirmation on the Senate candidate data.** `entities_2026.py`'s
+   673 rows can't distinguish "on the 2026 ballot" from "has an FEC
+   Senate filing on record" (see its module docstring) — the export has
+   no election-year column. Re-pulling with that column included, or
+   spot-checking against https://www.fec.gov/data/candidate/<id>/ for the
+   races you care about most, would close that gap.
+4. **A second rating source for cross-checking.** Sabato's Crystal Ball
+   (https://centerforpolitics.org/crystalball/2026-senate/,
+   .../2026-house/) or Inside Elections, run against the same
+   `senate_ratings_template.csv` / `house_ratings_template.csv` shape —
+   useful wherever Cook and another rater disagree.
 
 Once filled, load and merge a file like this:
 
