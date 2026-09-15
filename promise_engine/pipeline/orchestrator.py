@@ -72,8 +72,9 @@ class AssessmentInputs:
     evidence_review_state: str = "unreviewed"
 
 
-def _build_dependency_graph(profile: Optional[JurisdictionProfile], scenario: Optional[Scenario]):
-    if profile is None or scenario is None or not profile.mandatory_gate_catalog:
+def _build_dependency_graph(profile: Optional[JurisdictionProfile], scenario: Optional[Scenario], instrument_type: str):
+    gates = profile.gates_for_instrument(instrument_type) if profile is not None else ()
+    if profile is None or scenario is None or not gates:
         return (), ()
 
     nodes = tuple(
@@ -83,7 +84,7 @@ def _build_dependency_graph(profile: Optional[JurisdictionProfile], scenario: Op
             responsible_institution="unspecified",
             status=scenario.gates.get(gate, GateState.UNKNOWN),
         )
-        for gate in profile.mandatory_gate_catalog
+        for gate in gates
     )
     edges = tuple(
         DependencyEdge(from_node=a.node_id, to_node=b.node_id)
@@ -136,9 +137,9 @@ def run_assessment(inputs: AssessmentInputs, store: Optional[EvidenceStore] = No
         fiscal.assess(inputs.spec, inputs.fiscal_baseline, rule_set_version=inputs.rule_set_version),
         capacity.assess(inputs.capacity_readiness_evidence, inputs.rule_set_version),
         political_dependency.assess(
-            inputs.profile, inputs.scenario, inputs.coordinating_institutions, inputs.rule_set_version
+            inputs.profile, inputs.scenario, inputs.instrument_type, inputs.coordinating_institutions, inputs.rule_set_version
         ),
-        timeline.assess(inputs.profile, inputs.scenario, inputs.rule_set_version),
+        timeline.assess(inputs.profile, inputs.scenario, inputs.instrument_type, inputs.rule_set_version),
         evidence_quality.assess(
             primary_source, primary_claim, inputs.evidence_review_state, rule_set_version=inputs.rule_set_version
         ),
@@ -152,7 +153,7 @@ def run_assessment(inputs: AssessmentInputs, store: Optional[EvidenceStore] = No
         ),
     )
 
-    nodes, edges = _build_dependency_graph(inputs.profile, inputs.scenario)
+    nodes, edges = _build_dependency_graph(inputs.profile, inputs.scenario, inputs.instrument_type)
 
     result = AssessmentResult(
         result_id=new_id("result"),

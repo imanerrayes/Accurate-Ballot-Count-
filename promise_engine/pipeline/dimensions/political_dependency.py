@@ -16,16 +16,18 @@ from .base import make_result
 def assess(
     profile: Optional[JurisdictionProfile],
     scenario: Optional[Scenario],
+    instrument_type: str,
     coordinating_institutions: Sequence[str] = (),
     rule_set_version: Optional[str] = None,
 ):
-    if profile is None or not profile.mandatory_gate_catalog:
+    mandatory_gates = profile.gates_for_instrument(instrument_type) if profile is not None else ()
+    if profile is None or not mandatory_gates:
         return make_result(
             dimension=DimensionName.POLITICAL_DEPENDENCY,
             finding_code="dependency_route_not_orderable",
             evidence_state=EvidenceState.NOT_ASSESSABLE,
-            plain_language_finding="The jurisdiction profile does not declare a mandatory gate catalog for this instrument.",
-            missing_information=("mandatory_gate_catalog",),
+            plain_language_finding=f"The jurisdiction profile does not declare a mandatory gate catalog for instrument '{instrument_type}'.",
+            missing_information=(f"mandatory_gate_catalog:{instrument_type}",),
             rule_set_version=rule_set_version,
         )
 
@@ -39,7 +41,6 @@ def assess(
             rule_set_version=rule_set_version,
         )
 
-    mandatory_gates = profile.mandatory_gate_catalog
     gate_states = {gate: scenario.gates.get(gate, GateState.UNKNOWN) for gate in mandatory_gates}
 
     satisfied = [g for g, s in gate_states.items() if s == GateState.SATISFIED_IN_SCENARIO]

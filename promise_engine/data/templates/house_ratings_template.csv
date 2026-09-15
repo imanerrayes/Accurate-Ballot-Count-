@@ -1,0 +1,19 @@
+state,district,rating,source_name,source_url,as_of_date,incumbent_name,incumbent_party,notes
+OH,09,Toss Up,Cook Political Report,https://www.cookpolitical.com/ratings/house-race-ratings,2026-06-18,Marcy Kaptur,D,already in races_2026.py - district confirmed; overwrite only if the rating has changed
+IA,01,Toss Up,Cook Political Report,https://www.cookpolitical.com/ratings/house-race-ratings,2026-06-18,Mariannette Miller-Meeks,R,already in races_2026.py - district confirmed; overwrite only if the rating has changed
+NE,02,Toss Up,Cook Political Report,https://www.cookpolitical.com/ratings/house-race-ratings,2026-06-18,Don Bacon,R,already in races_2026.py - district confirmed; incumbent reportedly retiring - verify current candidate
+ME,02,Toss Up,Cook Political Report,https://www.cookpolitical.com/ratings/house-race-ratings,2026-06-18,Jared Golden,D,already in races_2026.py - district confirmed; incumbent reportedly retiring - verify current candidate
+WA,03,Toss Up,Cook Political Report,https://www.cookpolitical.com/ratings/house-race-ratings,2026-06-18,Marie Gluesenkamp Perez,D,already in races_2026.py - district confirmed; overwrite only if the rating has changed
+CA,13,Toss Up,Cook Political Report,https://www.cookpolitical.com/ratings/house-race-ratings,2026-06-18,Adam Gray,D,already in races_2026.py - district NOT confirmed this session; please verify
+CA,45,Toss Up,Cook Political Report,https://www.cookpolitical.com/ratings/house-race-ratings,2026-06-18,Derek Tran,D,already in races_2026.py - district NOT confirmed this session; please verify
+NM,02,Toss Up,Cook Political Report,https://www.cookpolitical.com/ratings/house-race-ratings,2026-06-18,Gabe Vasquez,D,already in races_2026.py - district NOT confirmed this session; please verify
+NY,04,Toss Up,Cook Political Report,https://www.cookpolitical.com/ratings/house-race-ratings,2026-06-18,Laura Gillen,D,already in races_2026.py - district NOT confirmed this session; please verify
+NC,01,Toss Up,Cook Political Report,https://www.cookpolitical.com/ratings/house-race-ratings,2026-06-18,Don Davis,D,already in races_2026.py - district NOT confirmed this session; please verify
+OH,13,Toss Up,Cook Political Report,https://www.cookpolitical.com/ratings/house-race-ratings,2026-06-18,Emilia Sykes,D,already in races_2026.py - district NOT confirmed this session; please verify
+TX,34,Toss Up,Cook Political Report,https://www.cookpolitical.com/ratings/house-race-ratings,2026-06-18,Vicente Gonzalez,D,already in races_2026.py - district NOT confirmed this session; please verify
+AZ,01,Toss Up,Cook Political Report,https://www.cookpolitical.com/ratings/house-race-ratings,2026-06-18,David Schweikert,R,already in races_2026.py - district NOT confirmed this session; please verify
+AZ,06,Toss Up,Cook Political Report,https://www.cookpolitical.com/ratings/house-race-ratings,2026-06-18,Juan Ciscomani,R,already in races_2026.py - district NOT confirmed this session; please verify
+CO,08,Toss Up,Cook Political Report,https://www.cookpolitical.com/ratings/house-race-ratings,2026-06-18,Gabe Evans,R,already in races_2026.py - district NOT confirmed this session; please verify
+MI,07,Toss Up,Cook Political Report,https://www.cookpolitical.com/ratings/house-race-ratings,2026-06-18,Tom Barrett,R,already in races_2026.py - district NOT confirmed this session; please verify
+PA,07,Toss Up,Cook Political Report,https://www.cookpolitical.com/ratings/house-race-ratings,2026-06-18,Ryan Mackenzie,R,already in races_2026.py - district NOT confirmed this session; please verify
+PA,10,Toss Up,Cook Political Report,https://www.cookpolitical.com/ratings/house-race-ratings,2026-06-18,Scott Perry,R,already in races_2026.py - district NOT confirmed this session; please verify

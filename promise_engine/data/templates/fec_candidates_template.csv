@@ -1,0 +1,2 @@
+fec_candidate_id,name,party,state,national_party,notes
+S6IA00123,EXAMPLE - Jane Q. Candidate,DEM,IA,Democratic,delete this example row; one row per candidate from https://www.fec.gov/data/candidates/?election_year=2026&office=S (or &office=H for House)

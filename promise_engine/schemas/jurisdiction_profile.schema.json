@@ -46,9 +46,13 @@
       "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/fiscalBaseline" }]
     },
     "mandatory_gate_catalog": {
-      "type": "array",
-      "items": { "type": "string", "minLength": 1 },
-      "uniqueItems": true
+      "description": "Ordered mandatory gates, keyed by instrument_type. Procedure differs by instrument even within one jurisdiction (e.g. ordinary legislation requires Senate cloture; budget reconciliation does not), so gates are not a single flat list.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string", "minLength": 1 },
+        "uniqueItems": true
+      }
     }
   },
   "$defs": {
